@@ -1,0 +1,370 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Brand Associative Network — MKTG 5307</title>
+<style>
+  :root{
+    --paper: #F7F5F0; --ink: #1E1B16; --ink-soft: #5C564B; --line: #D8D2C4;
+    --brain-fill: #F0E4DC; --brain-stroke: #B79E8C; --fold-stroke: #C9B4A5;
+    --pos: #2F6B4F; --pos-bg: #E4F1E9; --pos-border: #9CC7AE;
+    --neg: #A13D2C; --neg-bg: #F6E6E1; --neg-border: #DDA491;
+    --ikea: #1B4C8C; --lego: #C8961E; --netflix: #141414;
+  }
+  * { box-sizing: border-box; }
+  body{ margin:0; background:var(--paper); color:var(--ink); font-family: Georgia, 'Times New Roman', serif; -webkit-font-smoothing:antialiased; }
+  .page{ max-width: 900px; margin: 0 auto; padding: 40px 24px 80px; }
+  header{ border-bottom: 1px solid var(--line); padding-bottom: 20px; margin-bottom: 24px; }
+  .kicker{ font-family: 'Helvetica Neue', Arial, sans-serif; font-size: 12.5px; letter-spacing: 0.02em; color: var(--ink-soft); margin: 0 0 8px; }
+  h1{ font-size: 28px; margin: 0 0 10px; font-weight: 400; line-height:1.2; }
+  .intro{ font-family: 'Helvetica Neue', Arial, sans-serif; font-size: 13.5px; color: var(--ink-soft); line-height: 1.6; max-width: 680px; }
+  .intro b{ color:var(--ink); }
+  .legend{ display:flex; gap:16px; margin: 14px 0 6px; font-family:'Helvetica Neue',Arial,sans-serif; font-size:12.5px; color:var(--ink-soft); flex-wrap:wrap; }
+  .legend span{ display:inline-flex; align-items:center; gap:6px; }
+  .dot{ width:11px; height:11px; border-radius:50%; display:inline-block; }
+
+  #stage{ position:relative; width:100%; max-width:680px; aspect-ratio: 1/0.95; margin: 10px auto 0; touch-action: none; }
+  svg#brain-bg{ position:absolute; top:0; left:0; width:100%; height:100%; }
+  svg#lines{ position:absolute; top:0; left:0; width:100%; height:100%; pointer-events:none; }
+  #nodes{ position:absolute; top:0; left:0; width:100%; height:100%; }
+
+  .brandnode{
+    position:absolute; border-radius:50%; color: white;
+    display:flex; flex-direction:column; align-items:center; justify-content:center;
+    font-family: 'Helvetica Neue', Arial, sans-serif; font-weight:600; font-size:12.5px;
+    animation: corePulse 3s ease-in-out infinite; z-index:4; text-align:center; line-height:1.2;
+    cursor:pointer; touch-action:none;
+  }
+  .brandnode small{ font-weight:400; font-size:9.5px; opacity:0.85; }
+  .brandnode.hover-target{ box-shadow: 0 0 0 5px rgba(232,179,74,0.55) !important; }
+  @keyframes corePulse{ 0%,100%{ box-shadow:0 0 0 0 rgba(0,0,0,0.25);} 50%{ box-shadow:0 0 18px 6px rgba(0,0,0,0.18);} }
+
+  .node{
+    position:absolute; cursor:grab; padding:8px 6px; border-radius:14px;
+    font-family: 'Helvetica Neue', Arial, sans-serif; font-size:11px; line-height:1.25;
+    min-height:32px; display:flex; align-items:center; justify-content:center; text-align:center;
+    background: rgba(255,255,255,0.88); border: 1.5px solid var(--line); color: var(--ink-soft); z-index:3;
+    transition: box-shadow 0.2s; touch-action:none; user-select:none;
+  }
+  .node:active{ cursor:grabbing; }
+  .node.dragging-source{ box-shadow: 0 0 0 3px rgba(30,27,22,0.3); }
+  .node.firing{ animation: fireFlash 0.5s ease-out; }
+  @keyframes fireFlash{ 0%{transform:scale(1);} 40%{transform:scale(1.25); box-shadow:0 0 14px 4px rgba(232,179,74,0.6);} 100%{transform:scale(1);} }
+
+  .links-list{ display:flex; flex-direction:column; gap:2px; margin-top:3px; font-family:'Helvetica Neue',Arial,sans-serif; font-size:10px; }
+  .link-row{ display:flex; align-items:center; justify-content:center; gap:5px; padding:1px 6px; border-radius:8px; cursor:default; background:rgba(255,255,255,0.6); color:var(--ink-soft); }
+  .link-row span{ cursor:pointer; }
+  .link-row .x{ font-weight:700; }
+
+  .btn-row{ display:flex; gap:8px; justify-content:center; margin-top: 22px; flex-wrap: wrap; font-family: 'Helvetica Neue', Arial, sans-serif; }
+  button{ font-family: 'Helvetica Neue', Arial, sans-serif; font-size: 13.5px; padding: 10px 18px; border-radius: 6px; border: 1px solid var(--ink); background: var(--ink); color: white; cursor: pointer; }
+  button.secondary{ background: white; color: var(--ink); }
+  button:hover{ opacity:0.9; }
+  #summary{ max-width: 680px; margin: 20px auto 0; font-family: 'Helvetica Neue', Arial, sans-serif; font-size: 13.5px; color: var(--ink-soft); line-height: 1.6; text-align:left; }
+  #summary b{ color: var(--ink); }
+  footer{ margin-top: 50px; padding-top: 18px; border-top: 1px solid var(--line); font-family: 'Helvetica Neue', Arial, sans-serif; font-size: 12px; color: var(--ink-soft); }
+
+  @media (max-width: 600px){
+    .node{ font-size: 10px; padding: 6px 5px; border-radius:12px; }
+    h1{ font-size: 22px; }
+  }
+</style>
+</head>
+<body>
+
+<svg width="0" height="0" style="position:absolute;">
+  <defs>
+    <marker id="arrow-pos" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+      <path d="M0,0 L10,5 L0,10 z" fill="#2F6B4F"/>
+    </marker>
+    <marker id="arrow-neg" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+      <path d="M0,0 L10,5 L0,10 z" fill="#A13D2C"/>
+    </marker>
+  </defs>
+</svg>
+
+<div class="page">
+  <header>
+    <p class="kicker">MKTG 5307 — Strategic Brand Management</p>
+    <h1>Associative Network: Three Brands, One Memory Space</h1>
+    <p class="intro"><b>Press and drag</b> from an association node to a brand's core to link them — drag the same connection again to strengthen it. Use the +/− and × controls under a linked node to adjust favorability or remove a link. Click a brand's core (without dragging) to run activation for just that brand's network.</p>
+    <div class="legend">
+      <span><span class="dot" style="background:#1B4C8C;"></span>IKEA</span>
+      <span><span class="dot" style="background:#C8961E;"></span>LEGO</span>
+      <span><span class="dot" style="background:#141414;"></span>Netflix</span>
+    </div>
+  </header>
+
+  <div id="stage">
+    <svg id="brain-bg" viewBox="0 0 600 570" preserveAspectRatio="xMidYMid meet">
+      <path d="M 150,190 C 100,150 105,90 160,65 C 185,35 235,30 265,55 C 285,35 320,32 345,52 C 380,28 435,35 455,72 C 500,90 505,155 465,190 C 495,215 495,265 465,290 C 490,320 480,365 445,385 C 440,420 405,445 365,438 C 345,465 300,470 275,450 C 245,472 205,462 190,435 C 150,438 118,410 118,375 C 85,358 78,315 100,285 C 75,255 82,210 120,192 C 128,192 140,191 150,190 Z"
+            fill="var(--brain-fill)" stroke="var(--brain-stroke)" stroke-width="2.5"/>
+      <path d="M 300,55 C 300,140 300,230 300,300 C 300,350 300,400 300,450" fill="none" stroke="var(--fold-stroke)" stroke-width="2" opacity="0.7"/>
+      <path d="M 165,110 C 185,120 195,140 185,160" fill="none" stroke="var(--fold-stroke)" stroke-width="1.6" opacity="0.6"/>
+      <path d="M 150,220 C 175,225 185,250 165,270" fill="none" stroke="var(--fold-stroke)" stroke-width="1.6" opacity="0.6"/>
+      <path d="M 435,110 C 415,120 405,140 415,160" fill="none" stroke="var(--fold-stroke)" stroke-width="1.6" opacity="0.6"/>
+      <path d="M 450,220 C 425,225 415,250 435,270" fill="none" stroke="var(--fold-stroke)" stroke-width="1.6" opacity="0.6"/>
+      <path d="M 270,455 C 275,480 285,505 300,520 C 315,505 325,480 330,455" fill="var(--brain-fill)" stroke="var(--brain-stroke)" stroke-width="2.5"/>
+    </svg>
+    <svg id="lines"></svg>
+    <div id="nodes"></div>
+  </div>
+
+  <div class="btn-row">
+    <button id="reveal">Compare to Reference Data</button>
+    <button id="reset" class="secondary">Reset</button>
+  </div>
+  <div id="summary"></div>
+
+  <footer>Built for in-class or async use — no login required. Refresh to start a new session.</footer>
+</div>
+
+<script>
+const SVGNS = 'http://www.w3.org/2000/svg';
+const BRANDS = {
+  ikea: {label:"IKEA", fx:0.24, fy:0.24, color:"#1B4C8C"},
+  lego: {label:"LEGO", fx:0.76, fy:0.24, color:"#C8961E"},
+  netflix: {label:"Netflix", fx:0.5, fy:0.83, color:"#141414"}
+};
+
+const RAW_ITEMS = [
+  {label:"Affordable pricing", ref:{ikea:{s:3,f:true}, lego:{s:1,f:false}}},
+  {label:"Family movie / bonding night", ref:{ikea:{s:2,f:true}, lego:{s:2,f:true}, netflix:{s:3,f:true}}},
+  {label:"Confusing assembly / small pieces", ref:{ikea:{s:3,f:false}, lego:{s:2,f:false}}},
+  {label:"Swedish heritage", ref:{ikea:{s:2,f:true}}},
+  {label:"Danish heritage", ref:{lego:{s:1,f:true}}},
+  {label:"Binge-watching culture", ref:{netflix:{s:3,f:true}}},
+  {label:"Minimalist design", ref:{ikea:{s:2,f:true}}},
+  {label:"Creativity & building", ref:{lego:{s:3,f:true}}},
+  {label:"Personalized recommendations", ref:{netflix:{s:3,f:true}}},
+  {label:"Password-sharing crackdown", ref:{netflix:{s:2,f:false}}},
+  {label:"Nostalgia from childhood", ref:{lego:{s:3,f:true}, netflix:{s:1,f:true}}},
+  {label:"Sustainability initiatives", ref:{ikea:{s:1,f:true}, lego:{s:1,f:true}}}
+];
+
+let items = [];
+let links = {};
+let brandPosGlobal = {};
+let dragItemId = null;
+
+function sDots(s){ return s===1?"•":s===2?"••":"•••"; }
+function sWidth(s){ return s===1?1.6:s===2?3.2:5.5; }
+function sDelay(s){ return s===1?1500:s===2?850:280; }
+function linkKey(i,b){ return i+"|"+b; }
+
+function layout(){
+  const stage = document.getElementById('stage');
+  const w = stage.clientWidth, h = stage.clientHeight;
+  const n = RAW_ITEMS.length;
+  items = RAW_ITEMS.map((it, i) => {
+    const angle = (Math.PI*2*i/n) - Math.PI/2;
+    const rx = w*0.30, ry = h*0.27;
+    return {...it, id:i, x: w*0.5 + rx*Math.cos(angle), y: h*0.52 + ry*Math.sin(angle)};
+  });
+  brandPosGlobal = {};
+  Object.keys(BRANDS).forEach(bid => { brandPosGlobal[bid] = {x: w*BRANDS[bid].fx, y: h*BRANDS[bid].fy}; });
+  return {w, h};
+}
+
+function render(){
+  const {w, h} = layout();
+  const nodesDiv = document.getElementById('nodes');
+  const svg = document.getElementById('lines');
+  svg.setAttribute('viewBox', '0 0 ' + w + ' ' + h);
+  nodesDiv.innerHTML = ''; svg.innerHTML = '';
+
+  Object.keys(BRANDS).forEach(bid => {
+    const b = BRANDS[bid];
+    const size = w*0.13;
+    const el = document.createElement('div');
+    el.className = 'brandnode';
+    el.id = 'brand-' + bid;
+    el.dataset.bid = bid;
+    el.innerHTML = b.label + '<small>tap to activate</small>';
+    el.style.background = b.color;
+    el.style.left = (brandPosGlobal[bid].x - size/2) + 'px';
+    el.style.top = (brandPosGlobal[bid].y - size/2) + 'px';
+    el.style.width = size + 'px'; el.style.height = size + 'px';
+    el.onclick = () => runActivation(bid);
+    nodesDiv.appendChild(el);
+  });
+
+  items.forEach(it => {
+    Object.keys(BRANDS).forEach(bid => {
+      const key = linkKey(it.id, bid);
+      if(links[key]){
+        const l = links[key];
+        const bp = brandPosGlobal[bid];
+        const line = document.createElementNS(SVGNS,'line');
+        line.setAttribute('x1', it.x); line.setAttribute('y1', it.y);
+        line.setAttribute('x2', bp.x); line.setAttribute('y2', bp.y);
+        line.setAttribute('stroke', l.favorable ? 'var(--pos)' : 'var(--neg)');
+        line.setAttribute('stroke-width', sWidth(l.strength));
+        line.setAttribute('stroke-linecap','round');
+        line.setAttribute('stroke-dasharray','3,7');
+        line.setAttribute('opacity','0.6');
+        line.setAttribute('marker-end', l.favorable ? 'url(#arrow-pos)' : 'url(#arrow-neg)');
+        line.setAttribute('id','line-'+key);
+        line.style.animation = 'dashflow 1.4s linear infinite';
+        svg.appendChild(line);
+      }
+    });
+  });
+
+  items.forEach(it => {
+    const wrap = document.createElement('div');
+    const wrapW = w*0.20;
+    wrap.style.position = 'absolute';
+    wrap.style.left = (it.x - wrapW/2) + 'px';
+    wrap.style.top = (it.y - h*0.05) + 'px';
+    wrap.style.width = wrapW + 'px'; wrap.style.textAlign = 'center';
+
+    const node = document.createElement('div');
+    node.id = 'node-'+it.id;
+    node.className = 'node';
+    node.textContent = it.label;
+    node.addEventListener('pointerdown', (e) => startDrag(e, it.id));
+    wrap.appendChild(node);
+
+    const activeLinks = Object.keys(BRANDS).filter(bid => links[linkKey(it.id,bid)]);
+    if(activeLinks.length){
+      const list = document.createElement('div');
+      list.className = 'links-list';
+      activeLinks.forEach(bid => {
+        const key = linkKey(it.id,bid);
+        const l = links[key];
+        const row = document.createElement('div');
+        row.className = 'link-row';
+        const label = document.createElement('span');
+        label.textContent = BRANDS[bid].label + ': ' + sDots(l.strength);
+        label.onclick = () => { l.strength = l.strength===3?1:l.strength+1; render(); };
+        const fav = document.createElement('span');
+        fav.textContent = l.favorable ? '+' : '\u2013';
+        fav.style.fontWeight = '700';
+        fav.onclick = () => { l.favorable = !l.favorable; render(); };
+        const rm = document.createElement('span');
+        rm.className = 'x'; rm.textContent = '\u00d7';
+        rm.onclick = () => { delete links[key]; render(); };
+        row.appendChild(label); row.appendChild(fav); row.appendChild(rm);
+        list.appendChild(row);
+      });
+      wrap.appendChild(list);
+    }
+    nodesDiv.appendChild(wrap);
+  });
+}
+
+function startDrag(e, itemId){
+  e.preventDefault();
+  dragItemId = itemId;
+  const it = items.find(x => x.id === itemId);
+  document.getElementById('node-'+itemId).classList.add('dragging-source');
+  const svg = document.getElementById('lines');
+  const temp = document.createElementNS(SVGNS,'line');
+  temp.id = 'temp-drag-line';
+  temp.setAttribute('x1', it.x); temp.setAttribute('y1', it.y);
+  temp.setAttribute('x2', it.x); temp.setAttribute('y2', it.y);
+  temp.setAttribute('stroke', '#9a9a9a');
+  temp.setAttribute('stroke-width', '2.5');
+  temp.setAttribute('stroke-dasharray', '5,5');
+  svg.appendChild(temp);
+
+  window.addEventListener('pointermove', onDragMove);
+  window.addEventListener('pointerup', onDragEnd);
+}
+
+function onDragMove(e){
+  const temp = document.getElementById('temp-drag-line');
+  if(!temp) return;
+  const rect = document.getElementById('stage').getBoundingClientRect();
+  const x = e.clientX - rect.left, y = e.clientY - rect.top;
+  temp.setAttribute('x2', x); temp.setAttribute('y2', y);
+
+  document.querySelectorAll('.brandnode').forEach(b => b.classList.remove('hover-target'));
+  const target = document.elementFromPoint(e.clientX, e.clientY);
+  const brandEl = target ? target.closest('.brandnode') : null;
+  if(brandEl) brandEl.classList.add('hover-target');
+}
+
+function onDragEnd(e){
+  window.removeEventListener('pointermove', onDragMove);
+  window.removeEventListener('pointerup', onDragEnd);
+  const temp = document.getElementById('temp-drag-line');
+  if(temp) temp.remove();
+  document.querySelectorAll('.brandnode').forEach(b => b.classList.remove('hover-target'));
+  const srcEl = document.getElementById('node-'+dragItemId);
+  if(srcEl) srcEl.classList.remove('dragging-source');
+
+  const target = document.elementFromPoint(e.clientX, e.clientY);
+  const brandEl = target ? target.closest('.brandnode') : null;
+  if(brandEl && dragItemId !== null){
+    const bid = brandEl.dataset.bid;
+    const key = linkKey(dragItemId, bid);
+    if(links[key]){
+      links[key].strength = links[key].strength === 3 ? 3 : links[key].strength + 1;
+    } else {
+      links[key] = {strength:2, favorable:true};
+    }
+    render();
+  }
+  dragItemId = null;
+}
+
+function runActivation(bid){
+  const relevant = items.filter(it => links[linkKey(it.id,bid)]);
+  if(relevant.length === 0){ document.getElementById('summary').textContent = 'No associations linked to ' + BRANDS[bid].label + ' yet.'; return; }
+  document.querySelectorAll('.node').forEach(n => n.style.opacity = '0.25');
+  document.querySelectorAll('svg#lines line').forEach(l => l.style.opacity = '0.08');
+  relevant.forEach(it => {
+    document.getElementById('node-'+it.id).style.opacity = '1';
+    const line = document.getElementById('line-'+linkKey(it.id,bid));
+    if(line) line.style.opacity = '0.6';
+  });
+  const brandEl = document.getElementById('brand-'+bid);
+  brandEl.style.transform = 'scale(1.15)';
+  setTimeout(()=> brandEl.style.transform = 'scale(1)', 300);
+
+  relevant.forEach(it => {
+    const l = links[linkKey(it.id,bid)];
+    setTimeout(() => {
+      const node = document.getElementById('node-'+it.id);
+      const line = document.getElementById('line-'+linkKey(it.id,bid));
+      if(node){ node.classList.add('firing'); setTimeout(()=>node.classList.remove('firing'), 500); }
+      if(line){ line.style.opacity = '1'; }
+    }, sDelay(l.strength));
+  });
+
+  setTimeout(() => {
+    document.querySelectorAll('.node').forEach(n => n.style.opacity = '1');
+    document.querySelectorAll('svg#lines line').forEach(l => l.style.opacity = '0.6');
+    const order = relevant.slice().sort((a,b)=>links[linkKey(b.id,bid)].strength-links[linkKey(a.id,bid)].strength).map(it=>it.label).join(' \u2192 ');
+    const shared = relevant.filter(it => Object.keys(BRANDS).filter(b2=>links[linkKey(it.id,b2)]).length > 1).length;
+    document.getElementById('summary').innerHTML =
+      '<b>' + BRANDS[bid].label + ' activation order:</b> ' + order +
+      (shared > 0 ? '<br><br>' + shared + ' of these association(s) are also linked to another brand — shared associations differentiate less, even if they\'re strong.' : '');
+  }, 2000);
+}
+
+document.getElementById('reveal').onclick = () => {
+  const summary = document.getElementById('summary');
+  let html = '<b>Illustrative reference network:</b><br>';
+  RAW_ITEMS.forEach(it => {
+    const brandStrs = Object.keys(it.ref).map(bid => BRANDS[bid].label + ' (' + sDots(it.ref[bid].s) + ', ' + (it.ref[bid].f?'positive':'negative') + ')');
+    html += it.label + ' — ' + brandStrs.join(', ') + '<br>';
+  });
+  summary.innerHTML = html;
+};
+
+document.getElementById('reset').onclick = () => { links = {}; document.getElementById('summary').innerHTML=''; render(); };
+
+const styleTag = document.createElement('style');
+styleTag.textContent = '@keyframes dashflow { to { stroke-dashoffset: -20; } }';
+document.head.appendChild(styleTag);
+
+layout();
+render();
+window.addEventListener('resize', render);
+</script>
+</body>
+</html>
